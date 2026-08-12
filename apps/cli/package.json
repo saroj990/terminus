@@ -1,0 +1,27 @@
+{
+  "name": "@lca/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "lca": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node --import tsx src/main.ts",
+    "test": "node -e \"console.log('@lca/cli: covered by evals')\""
+  },
+  "dependencies": {
+    "@lca/agent-core": "workspace:*",
+    "@lca/llm": "workspace:*",
+    "@lca/logger": "workspace:*",
+    "@lca/policy": "workspace:*",
+    "@lca/tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

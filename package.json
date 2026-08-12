@@ -1,0 +1,23 @@
+{
+  "name": "local-coding-agent",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Production-oriented coding & deployment AI agent platform",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "eval": "pnpm --filter @lca/evals run eval",
+    "agent": "pnpm --filter @lca/cli start",
+    "agent:calc": "pnpm --filter @lca/cli start -- \"What is (12 + 8) * 3?\"",
+    "agent:weather": "pnpm --filter @lca/cli start -- \"What is the weather in London?\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
