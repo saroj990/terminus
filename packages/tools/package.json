@@ -14,7 +14,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test src/index.test.ts src/files.test.ts src/rag.test.ts src/memory.test.ts src/confirm.test.ts src/github.test.ts"
+    "test": "node --import tsx --test src/index.test.ts src/files.test.ts src/rag.test.ts src/memory.test.ts src/confirm.test.ts src/github.test.ts src/coding.test.ts"
   },
   "dependencies": {
     "@lca/agent-core": "workspace:*",

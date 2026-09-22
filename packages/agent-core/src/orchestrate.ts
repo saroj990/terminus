@@ -23,7 +23,7 @@ export function planGoal(goal: string): string[] {
 export function formatPlanPrompt(plan: string[]): string {
   if (!plan.length) return "";
   const lines = plan.map((step, i) => `${i + 1}. ${step}`);
-  return `Planned steps:\n${lines.join("\n")}\nFollow this plan. If a tool fails, retry once.`;
+  return `Planned steps:\n${lines.join("\n")}\nFollow this plan. Prefer search/read before write_file; run_workspace_tests after edits; retry once on failure.`;
 }
 
 export interface OrchestratorOptions extends AgentLoopOptions {

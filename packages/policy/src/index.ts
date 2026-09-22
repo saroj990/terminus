@@ -49,7 +49,8 @@ export function createDefaultPolicy(options: DefaultPolicyOptions = {}): PolicyE
       if (
         (input.toolName === "read_file" ||
           input.toolName === "list_dir" ||
-          input.toolName === "search_files") &&
+          input.toolName === "search_files" ||
+          input.toolName === "write_file") &&
         typeof input.args.path === "string"
       ) {
         try {
