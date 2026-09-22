@@ -1,11 +1,50 @@
+# Git / OS
+.DS_Store
+Thumbs.db
+*.log
+*.tsbuildinfo
+.turbo/
+.cache/
+.tmp/
+tmp/
+
+# Dependencies & builds
 node_modules/
 dist/
+build/
 coverage/
+.nyc_output/
+
+# Env & secrets (keep .env.example)
 .env
 .env.*
 !.env.example
-*.log
-.DS_Store
-.turbo/
-*.tsbuildinfo
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Agent / local runtime
 .lca/
+.ollama/
+
+# Editors / IDEs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# Package manager noise
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Test / eval artifacts
+evals/output/
+*.sqlite
+*.db
+
+# Local notes / planning docs (keep in working tree, do not commit)
+docs/
