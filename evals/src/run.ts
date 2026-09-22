@@ -1,4 +1,4 @@
-import { createAgentRun, runAgentLoop } from "@lca/agent-core";
+import { createAgentRun, loadLatestCheckpoint, runOrchestrated } from "@lca/agent-core";
 import { createHeuristicLlm } from "@lca/llm";
 import { formatMemoryPrompt, loadMemory, upsertMemory } from "@lca/memory";
 import { createDefaultPolicy } from "@lca/policy";
@@ -46,16 +46,28 @@ async function runCase(c: EvalCase): Promise<CaseResult> {
     ? formatMemoryPrompt(loadMemory(workspaceRoot))
     : undefined;
 
+  const deps = {
+    llm: createHeuristicLlm(),
+    tools,
+    policy: createDefaultPolicy(),
+  };
+
   const run = createAgentRun(c.goal);
-  const result = await runAgentLoop(
-    run,
-    {
-      llm: createHeuristicLlm(),
-      tools,
-      policy: createDefaultPolicy(),
-    },
-    { workspaceRoot, extraSystem },
-  );
+  let result = await runOrchestrated(run, deps, { workspaceRoot, extraSystem });
+
+  if (c.resumeApproval) {
+    if (result.status !== "awaiting_approval") {
+      failures.push(`resume: expected awaiting_approval first, got ${result.status}`);
+    } else if (workspaceRoot) {
+      const cp = loadLatestCheckpoint(workspaceRoot);
+      result = await runOrchestrated(result, deps, {
+        workspaceRoot,
+        extraSystem,
+        checkpoint: cp,
+        approval: c.resumeApproval,
+      });
+    }
+  }
 
   if (c.expectStatus && result.status !== c.expectStatus) {
     failures.push(`status: expected ${c.expectStatus}, got ${result.status}`);

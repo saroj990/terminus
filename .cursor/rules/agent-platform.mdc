@@ -19,12 +19,12 @@ This is a **tool-using agent runtime**, not throwaway lesson apps. Later phases 
 ## Side effects
 
 - `read` / `external`: auto-allow today (calculator, weather).
-- `destructive`: `ask` → `awaiting_approval` (no silent execute).
+- `destructive`: `ask` → `awaiting_approval`; resume with `--approve` / `--deny` (checkpointed).
 - Path jail / forbidden shell helpers live in `@lca/policy` — use them for file/shell tools.
 
 ## Workflow
 
 - Docs live in `docs/` and are **gitignored**. Do not commit them.
 - After changes to loop, tools, policy, or llm: `pnpm test` and `pnpm eval`.
-- Follow the roadmap **in order** (see `follow-the-plan` rule). Next is Phase 5 frameworks/HITL, not coding-agent writes.
+- Follow the roadmap **in order** (see `follow-the-plan` rule). Next is Phase 6 GitHub tools, not coding-agent writes.
 - Do not store secrets in logs or memory; logger already redacts key/token/secret patterns.

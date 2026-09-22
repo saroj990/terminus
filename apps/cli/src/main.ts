@@ -55,7 +55,12 @@
  *     Observe→ feed tool results back into the conversation
  *   until the LLM returns a plain-text final answer (or fails / needs approval).
  */
-import { createAgentRun, runAgentLoop } from "@lca/agent-core";
+import {
+  createAgentRun,
+  loadCheckpoint,
+  loadLatestCheckpoint,
+  runOrchestrated,
+} from "@lca/agent-core";
 
 /**
  * createLlmFromEnv:
@@ -98,7 +103,7 @@ import { createDefaultPolicy } from "@lca/policy";
  *   Phase 1: calculator, get_weather
  *   Phase 2: read_file, list_dir, search_files, run_shell (jailed / allowlisted)
  *   Phase 3: index_codebase, search_codebase
- *   Phase 4: remember, recall (plus extraSystem from .lca/memory.json)
+ *   Phase 5: confirm_action (destructive → HITL) + plan/execute/retry checkpoints
  *
  *   Each tool is a ToolSpec: { name, description, sideEffect, inputSchema, execute }.
  *   The LLM sees name/description/schema; your runtime calls execute().
@@ -138,15 +143,20 @@ async function main() {
    *   2. remove any standalone "--" tokens
    *   3. join the rest into one goal string
    */
-  const goal = process.argv
+  const raw = process.argv
     .slice(2)
-    .filter((a) => a !== "--")
-    .join(" ")
-    .trim();
+    .filter((a) => a !== "--");
+  const approvalFlag = raw[0] === "--approve" || raw[0] === "--deny" ? raw[0] : undefined;
+  const approval = approvalFlag === "--approve" ? "approve" : approvalFlag === "--deny" ? "deny" : undefined;
+  const goal = (approval ? raw.slice(2).join(" ") : raw.join(" ")).trim();
+  const resumeId = approval ? raw[1] : undefined;
 
-  // No goal → show usage and exit with a non-zero code (signals failure to shells/CI).
-  if (!goal) {
-    console.error('Usage: pnpm agent -- "What is (12 + 8) * 3?"');
+  if (!goal && !approval) {
+    console.error(
+      'Usage: pnpm agent -- "What is (12 + 8) * 3?"\n' +
+        "       pnpm agent -- --approve\n" +
+        "       pnpm agent -- --deny [runId]",
+    );
     process.exit(1);
   }
 
@@ -165,80 +175,41 @@ async function main() {
    *
    * `?? "heuristic"` means: if LCA_PROVIDER is missing/undefined, use heuristic.
    */
-  const run = createAgentRun(goal, {
-    provider: process.env.LCA_PROVIDER ?? "heuristic",
-  });
+  const checkpoint = approval
+    ? resumeId
+      ? loadCheckpoint(workspaceRoot, resumeId)
+      : loadLatestCheckpoint(workspaceRoot)
+    : undefined;
 
-  /**
-   * Child logger that ALWAYS includes this run's id.
-   * That lets you correlate every step/finish event for one request:
-   *   grep run_abc123 logs.jsonl
-   */
+  if (approval && !checkpoint) {
+    console.error("No paused run to resume. Start a goal that needs approval first.");
+    process.exit(1);
+  }
+
+  const run = checkpoint
+    ? checkpoint.run
+    : createAgentRun(goal, {
+        provider: process.env.LCA_PROVIDER ?? "heuristic",
+      });
+
   const log = logger.child({ runId: run.id });
+  log.info("agent_run_started", { goal: run.goal, workspaceRoot, approval });
 
-  // First breadcrumb: we accepted a goal and are about to start the loop.
-  log.info("agent_run_started", { goal, workspaceRoot });
-
-  /**
-   * ============================================================
-   * THE IMPORTANT CALL — hand control to the agent runtime
-   * ============================================================
-   *
-   * Arguments:
-   *   1) run
-   *        Mutable AgentRun object. The loop updates status, steps, finalAnswer.
-   *
-   *   2) deps (dependency bag)
-   *        llm     — how to "think" (produce text and/or tool_calls)
-   *        tools   — what the agent is allowed to request
-   *        policy  — gate before each tool execute
-   *        onStep  — optional callback after each Think→Act→Observe cycle
-   *                  (we use it only for logging; a UI could stream steps live)
-   *
-   *   3) options
-   *        workspaceRoot — filesystem root tools should treat as the project.
-   *        (Phase 1 barely uses this; Phase 2 file/shell tools will.)
-   *
-   * Return value:
-   *   The same run object, now filled in (status, steps, finalAnswer, error...).
-   *
-   * NOTE: `await` pauses here until the whole multi-step loop finishes.
-   */
-  const result = await runAgentLoop(
+  const result = await runOrchestrated(
     run,
     {
-      // Brain: heuristic rules OR Ollama/OpenAI, chosen from env.
       llm: createLlmFromEnv(),
-
-      // Hands: Phase 1 tools the model can call by name.
       tools: createDefaultTools(),
-
-      // Guardrails: allow / deny / ask before any tool runs.
       policy: createDefaultPolicy(),
-
-      /**
-       * onStep fires once per loop iteration.
-       * A "step" usually looks like:
-       *   - toolCalls: [{ name: "calculator", arguments: { expression: "2+2" } }]
-       *   - observations: [{ ok: true, summary: "2+2 = 4", policy: "allow", ... }]
-       *
-       * Or, on the last step:
-       *   - toolCalls: []
-       *   - thought / final text answer from the LLM
-       *
-       * We log a compact summary (not the full raw payloads) to keep terminals readable.
-       */
       onStep: (step) => {
         log.info("agent_step", {
           index: step.index,
-          // Which tools were requested in this step (may be empty on the final answer step).
           tools: step.toolCalls.map((t) => t.name),
-          // What each tool returned + whether policy allowed it.
           observations: step.observations.map((o) => ({
             tool: o.toolName,
             ok: o.ok,
             summary: o.summary,
-            policy: o.policy.verdict, // "allow" | "deny" | "ask"
+            policy: o.policy.verdict,
           })),
         });
       },
@@ -246,6 +217,8 @@ async function main() {
     {
       workspaceRoot,
       extraSystem: formatMemoryPrompt(loadMemory(workspaceRoot)),
+      checkpoint,
+      approval,
     },
   );
 
@@ -262,13 +235,17 @@ async function main() {
     console.log("\nAnswer:", result.finalAnswer);
   }
 
-  /**
-   * Treat anything other than "succeeded" as a process failure.
-   * Examples:
-   *   - failed            → loop error / max steps
-   *   - awaiting_approval → policy said "ask" (HITL not implemented in CLI yet)
-   *   - cancelled         → abort signal
-   */
+  if (result.status === "awaiting_approval") {
+    // Exit 0 so `pnpm agent` is not treated as a failed script. This is a
+    // successful pause, not a crash — the tool has not run yet.
+    console.log(
+      `\nPaused for your approval (${result.id}). The tool did not run.\n` +
+        `  pnpm agent -- --approve\n` +
+        `  pnpm agent -- --deny`,
+    );
+    return;
+  }
+
   if (result.status !== "succeeded") {
     console.error(
       `\nRun status: ${result.status}${result.error ? ` — ${result.error}` : ""}`,
