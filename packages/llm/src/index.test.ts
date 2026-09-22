@@ -136,4 +136,34 @@ describe("heuristic llm", () => {
     });
     assert.equal(res.toolCalls?.[0]?.name, "confirm_action");
   });
+
+  it("routes deploy docker, staging, and health", async () => {
+    const tools = createDefaultTools();
+    const docker = await llm.complete({
+      messages: [
+        { role: "system", content: "x" },
+        { role: "user", content: "Build the Docker image for staging" },
+      ],
+      tools,
+    });
+    assert.equal(docker.toolCalls?.[0]?.name, "deploy_docker_build");
+
+    const staging = await llm.complete({
+      messages: [
+        { role: "system", content: "x" },
+        { role: "user", content: "Deploy to staging" },
+      ],
+      tools,
+    });
+    assert.equal(staging.toolCalls?.[0]?.name, "deploy_staging");
+
+    const health = await llm.complete({
+      messages: [
+        { role: "system", content: "x" },
+        { role: "user", content: "Check staging health" },
+      ],
+      tools,
+    });
+    assert.equal(health.toolCalls?.[0]?.name, "deploy_check_health");
+  });
 });

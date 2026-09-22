@@ -9,8 +9,8 @@ Implementation **must** follow `docs/AI_Agent_Engineering_Roadmap.md` **in phase
 
 ## Current position
 
-- **Done:** Phase 0–1 (loop, calculator, weather), Phase 2 (file + jailed shell), Phase 3 RAG, Phase 4 memory, Phase 5 HITL, Phase 6 GitHub, Phase 7 coding (`write_file`, test/lint tools).
-- **Next only:** **Phase 8 — deploy** (Docker/CI/staging — not multi-agent dashboard yet).
+- **Done:** Phase 0–1 (loop, calculator, weather), Phase 2 (file + jailed shell), Phase 3 RAG, Phase 4 memory, Phase 5 HITL, Phase 6 GitHub, Phase 7 coding (`write_file`, test/lint tools), Phase 8 deploy (Docker/staging/health/rollback — dry-run default).
+- **Next only:** **Phase 9 — multi-agent** (specialist handoffs — not dashboard yet).
 
 ## Locked sequence
 
@@ -18,7 +18,6 @@ Implementation **must** follow `docs/AI_Agent_Engineering_Roadmap.md` **in phase
 
 ## Do not
 
-- Add deploy/Docker/K8s tools until Phase 8.
 - Add LangGraph/dashboard/NestJS until their phases.
 - Propose “shortcuts” that skip RAG or memory.
 

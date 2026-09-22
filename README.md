@@ -18,10 +18,11 @@ packages/policy       # allow / deny / ask + path jail helpers
 packages/logger       # structured JSON logs with secret redaction
 packages/tools        # calculator, weather, files, shell, RAG, memory, GitHub
 packages/github       # gh/git helpers, dry-run by default
+packages/deploy       # staging deploy helpers, dry-run by default
 packages/rag          # chunk + hashed embeddings + cosine retrieval
 packages/memory       # typed prefs/tasks in .lca/memory.json (no secrets)
 packages/llm          # heuristic + OpenAI-compatible (Ollama/OpenAI)
-evals/                # Phase 1–7 golden cases
+evals/                # Phase 1–8 golden cases
 fixtures/repos        # tiny-node fixture
 ```
 
@@ -46,6 +47,13 @@ pnpm agent -- "Create a GitHub issue titled Bug in login"
 pnpm agent -- "Review recent commits"
 pnpm agent -- "Write the file notes.txt with content hello phase7"
 pnpm agent -- "Run the project tests"
+
+# Phase 8 deploy (dry-run unless LCA_DEPLOY_LIVE=1 — policy asks before live)
+pnpm agent -- "Build the Docker image for staging"
+pnpm agent -- "Deploy to staging"
+pnpm agent -- "Check staging health"
+pnpm agent -- "Propose rollback because health check failed"
+pnpm agent -- --approve
 
 # Optional: Ollama
 # LCA_PROVIDER=ollama OLLAMA_MODEL=llama3.2 pnpm agent -- "Calculate 15 * 4"

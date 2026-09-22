@@ -93,6 +93,17 @@ export function createDefaultPolicy(options: DefaultPolicyOptions = {}): PolicyE
         };
       }
 
+      if (
+        process.env.LCA_DEPLOY_LIVE === "1" &&
+        (input.toolName === "deploy_staging" || input.toolName === "deploy_docker_build")
+      ) {
+        return {
+          verdict: "ask",
+          reason: "Live staging deploy requires human approval",
+          ruleId: "ask_deploy_live",
+        };
+      }
+
       if (askSideEffects.has(input.sideEffect)) {
         return {
           verdict: "ask",
