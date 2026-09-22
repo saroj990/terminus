@@ -1,0 +1,30 @@
+---
+description: Local Coding Agent platform invariants — one runtime, ToolSpec, policy, evals
+alwaysApply: true
+---
+
+# Agent platform
+
+This is a **tool-using agent runtime**, not throwaway lesson apps. Later phases plug into the same spine.
+
+## Architecture
+
+- Composition: `apps/cli` wires LLM + tools + policy; it does not implement tools.
+- Loop: `runAgentLoop` in `@lca/agent-core` (Think → Act → Observe). Do **not** fork the loop to add a capability.
+- New capability = new `ToolSpec` (`name`, `description`, `sideEffect`, `inputSchema`, `execute`).
+- Every tool call: `PolicyEngine` → `allow` | `deny` | `ask` **before** `execute`.
+- Tool results: `{ ok, summary, data?, error? }`. Prefer `summary` over dumping raw payloads into context.
+- LLM is `LlmClient` (`heuristic` | `ollama` | `openai`). Do not couple the loop to a provider.
+
+## Side effects
+
+- `read` / `external`: auto-allow today (calculator, weather).
+- `destructive`: `ask` → `awaiting_approval` (no silent execute).
+- Path jail / forbidden shell helpers live in `@lca/policy` — use them for file/shell tools.
+
+## Workflow
+
+- Docs live in `docs/` and are **gitignored**. Do not commit them.
+- After changes to loop, tools, policy, or llm: `pnpm test` and `pnpm eval`.
+- Do not add NestJS/React/RAG/GitHub until Phase 2 file + shell tools exist.
+- Do not store secrets in logs or memory; logger already redacts key/token/secret patterns.
