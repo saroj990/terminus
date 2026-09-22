@@ -43,4 +43,15 @@ describe("heuristic llm", () => {
     });
     assert.equal(res.toolCalls?.[0]?.name, "read_file");
   });
+
+  it("routes where-is questions to search_codebase", async () => {
+    const res = await llm.complete({
+      messages: [
+        { role: "system", content: "x" },
+        { role: "user", content: "Where is greet defined?" },
+      ],
+      tools: createDefaultTools(),
+    });
+    assert.equal(res.toolCalls?.[0]?.name, "search_codebase");
+  });
 });

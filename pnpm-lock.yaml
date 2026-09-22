@@ -127,6 +127,22 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
 
+  packages/rag:
+    dependencies:
+      '@lca/policy':
+        specifier: workspace:*
+        version: link:../policy
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.1
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.12
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
   packages/tools:
     dependencies:
       '@lca/agent-core':
@@ -135,6 +151,9 @@ importers:
       '@lca/policy':
         specifier: workspace:*
         version: link:../policy
+      '@lca/rag':
+        specifier: workspace:*
+        version: link:../rag
     devDependencies:
       '@types/node':
         specifier: ^22.10.2

@@ -221,6 +221,16 @@ function routeFileAndShell(
     toolCalls: [{ id: createToolCallId(), name, arguments: args }],
   });
 
+  if (toolNames.has("search_codebase")) {
+    const semantic =
+      /\bwhere\s+is\b/i.test(user) ||
+      /what does this (project|repo|codebase|code)\b/i.test(user) ||
+      /\b(semantic search|search codebase|documentation assistant)\b/i.test(user);
+    if (semantic) {
+      return call("search_codebase", { query: user });
+    }
+  }
+
   if (toolNames.has("run_shell") && /\b(curl|wget|sudo|rm\s+-rf)\b/i.test(user)) {
     const exe = user.match(/\b(curl|wget|sudo)\b/i)?.[1]?.toLowerCase() ?? "curl";
     return call("run_shell", { argv: [exe, "https://example.invalid"] });
