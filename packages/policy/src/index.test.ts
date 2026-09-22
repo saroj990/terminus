@@ -77,6 +77,24 @@ describe("createDefaultPolicy", () => {
       else process.env.LCA_GITHUB_LIVE = prev;
     }
   });
+
+  it("asks for live staging deploy", () => {
+    const prev = process.env.LCA_DEPLOY_LIVE;
+    process.env.LCA_DEPLOY_LIVE = "1";
+    try {
+      const policy = createDefaultPolicy();
+      const d = policy.evaluateToolCall({
+        toolName: "deploy_staging",
+        sideEffect: "external",
+        args: {},
+        workspaceRoot: "/tmp/ws",
+      });
+      assert.equal(d.verdict, "ask");
+    } finally {
+      if (prev === undefined) delete process.env.LCA_DEPLOY_LIVE;
+      else process.env.LCA_DEPLOY_LIVE = prev;
+    }
+  });
 });
 
 describe("assertPathInsideWorkspace", () => {

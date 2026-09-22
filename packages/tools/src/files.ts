@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const MAX_READ_BYTES = 32_768;
+const MAX_WRITE_BYTES = 32_768;
 const MAX_LIST_ENTRIES = 50;
 const MAX_SEARCH_HITS = 20;
 const MAX_SEARCH_FILE_BYTES = 64_768;
@@ -127,6 +128,50 @@ export function createListDirTool(): ToolSpec {
           ok: true,
           data: { path: rel, entries, truncated },
           summary: `Listed ${entries.length} entries in ${rel}: ${namesPreview}${truncated ? " (truncated)" : ""}`,
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return fail(message);
+      }
+    },
+  };
+}
+
+export function createWriteFileTool(): ToolSpec {
+  return {
+    name: "write_file",
+    description:
+      "Write UTF-8 text to a file under the workspace (creates or overwrites). Blocked: path escape, .env, keys, credentials, .git.",
+    sideEffect: "write",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Relative path under the workspace" },
+        content: { type: "string", description: "Full file contents to write" },
+      },
+      required: ["path", "content"],
+      additionalProperties: false,
+    },
+    maxObservationTokens: 500,
+    async execute(input, ctx) {
+      try {
+        const userPath = String(input.path ?? "");
+        const content = String(input.content ?? "");
+        if (Buffer.byteLength(content, "utf8") > MAX_WRITE_BYTES) {
+          return fail(`Content too large (max ${MAX_WRITE_BYTES} bytes)`);
+        }
+        const resolved = resolveSafe(ctx.workspaceRoot, userPath);
+        const sensitive = denyIfSensitive(resolved);
+        if (sensitive) return fail(sensitive);
+
+        const rel = path.relative(ctx.workspaceRoot, resolved);
+        fs.mkdirSync(path.dirname(resolved), { recursive: true });
+        fs.writeFileSync(resolved, content, "utf8");
+        const preview = content.slice(0, 80);
+        return {
+          ok: true,
+          data: { path: rel, bytes: Buffer.byteLength(content, "utf8"), content },
+          summary: `Wrote ${rel} (${Buffer.byteLength(content, "utf8")} bytes): ${preview}`,
         };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

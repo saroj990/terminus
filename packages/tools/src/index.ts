@@ -1,6 +1,7 @@
 import { createCalculatorTool } from "./calculator.js";
 import { createWeatherTool } from "./weather.js";
-import { createListDirTool, createReadFileTool, createSearchFilesTool } from "./files.js";
+import { createListDirTool, createReadFileTool, createSearchFilesTool, createWriteFileTool } from "./files.js";
+import { createRunWorkspaceLintTool, createRunWorkspaceTestsTool } from "./coding.js";
 import { createRunShellTool } from "./shell.js";
 import { createIndexCodebaseTool, createSearchCodebaseTool } from "./rag.js";
 import { createRecallTool, createRememberTool } from "./memory.js";
@@ -11,16 +12,24 @@ import {
   createGithubReviewCommitsTool,
 } from "./github.js";
 import type { ExecFn } from "@lca/github";
+import {
+  createDeployCheckHealthTool,
+  createDeployDockerBuildTool,
+  createDeployProposeRollbackTool,
+  createDeployStagingTool,
+} from "./deploy.js";
 import type { ToolSpec } from "@lca/agent-core";
 
 export * from "./calculator.js";
 export * from "./weather.js";
 export * from "./files.js";
+export * from "./coding.js";
 export * from "./shell.js";
 export * from "./rag.js";
 export * from "./memory.js";
 export * from "./confirm.js";
 export * from "./github.js";
+export * from "./deploy.js";
 
 export function createPhase1Tools(options?: {
   fetchImpl?: typeof fetch;
@@ -31,6 +40,7 @@ export function createPhase1Tools(options?: {
 export function createPhase2Tools(): ToolSpec[] {
   return [
     createReadFileTool(),
+    createWriteFileTool(),
     createListDirTool(),
     createSearchFilesTool(),
     createRunShellTool(),
@@ -58,9 +68,26 @@ export function createPhase6Tools(options?: { githubExec?: ExecFn }): ToolSpec[]
   ];
 }
 
+export function createPhase7Tools(): ToolSpec[] {
+  return [createRunWorkspaceTestsTool(), createRunWorkspaceLintTool()];
+}
+
+export function createPhase8Tools(options?: {
+  deployExec?: ExecFn;
+  fetchImpl?: typeof fetch;
+}): ToolSpec[] {
+  return [
+    createDeployDockerBuildTool({ exec: options?.deployExec }),
+    createDeployStagingTool(),
+    createDeployCheckHealthTool({ fetchImpl: options?.fetchImpl }),
+    createDeployProposeRollbackTool(),
+  ];
+}
+
 export function createDefaultTools(options?: {
   fetchImpl?: typeof fetch;
   githubExec?: ExecFn;
+  deployExec?: ExecFn;
 }): ToolSpec[] {
   return [
     ...createPhase1Tools(options),
@@ -69,5 +96,7 @@ export function createDefaultTools(options?: {
     ...createPhase4Tools(),
     ...createPhase5Tools(),
     ...createPhase6Tools({ githubExec: options?.githubExec }),
+    ...createPhase7Tools(),
+    ...createPhase8Tools({ deployExec: options?.deployExec, fetchImpl: options?.fetchImpl }),
   ];
 }

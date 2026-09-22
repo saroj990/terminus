@@ -101,6 +101,31 @@ describe("heuristic llm", () => {
     assert.equal(review.toolCalls?.[0]?.name, "github_review_commits");
   });
 
+  it("routes write_file and run_workspace_tests", async () => {
+    const tools = createDefaultTools();
+    const write = await llm.complete({
+      messages: [
+        { role: "system", content: "x" },
+        { role: "user", content: "Write the file notes.txt with content hello phase7" },
+      ],
+      tools,
+    });
+    assert.equal(write.toolCalls?.[0]?.name, "write_file");
+    assert.equal(
+      (write.toolCalls?.[0]?.arguments as { content?: string })?.content,
+      "hello phase7",
+    );
+
+    const tests = await llm.complete({
+      messages: [
+        { role: "system", content: "x" },
+        { role: "user", content: "Run the project tests" },
+      ],
+      tools,
+    });
+    assert.equal(tests.toolCalls?.[0]?.name, "run_workspace_tests");
+  });
+
   it("routes confirm_action", async () => {
     const res = await llm.complete({
       messages: [
@@ -110,5 +135,35 @@ describe("heuristic llm", () => {
       tools: createDefaultTools(),
     });
     assert.equal(res.toolCalls?.[0]?.name, "confirm_action");
+  });
+
+  it("routes deploy docker, staging, and health", async () => {
+    const tools = createDefaultTools();
+    const docker = await llm.complete({
+      messages: [
+        { role: "system", content: "x" },
+        { role: "user", content: "Build the Docker image for staging" },
+      ],
+      tools,
+    });
+    assert.equal(docker.toolCalls?.[0]?.name, "deploy_docker_build");
+
+    const staging = await llm.complete({
+      messages: [
+        { role: "system", content: "x" },
+        { role: "user", content: "Deploy to staging" },
+      ],
+      tools,
+    });
+    assert.equal(staging.toolCalls?.[0]?.name, "deploy_staging");
+
+    const health = await llm.complete({
+      messages: [
+        { role: "system", content: "x" },
+        { role: "user", content: "Check staging health" },
+      ],
+      tools,
+    });
+    assert.equal(health.toolCalls?.[0]?.name, "deploy_check_health");
   });
 });

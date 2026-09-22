@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
-import { createListDirTool, createReadFileTool, createSearchFilesTool } from "./files.js";
+import { createListDirTool, createReadFileTool, createSearchFilesTool, createWriteFileTool } from "./files.js";
 import { createRunShellTool } from "./shell.js";
 
 function ctx(root: string) {
@@ -28,6 +28,21 @@ describe("file tools security", () => {
     const secret = await read.execute({ path: "credentials.json" }, ctx(root));
     assert.equal(secret.ok, false);
     assert.match(String(secret.error), /sensitive/i);
+
+    const write = createWriteFileTool();
+    const wrote = await write.execute(
+      { path: "out.txt", content: "phase7" },
+      ctx(root),
+    );
+    assert.equal(wrote.ok, true);
+    const again = await read.execute({ path: "out.txt" }, ctx(root));
+    assert.match(String((again.data as { content?: string }).content), /phase7/);
+
+    const badWrite = await write.execute(
+      { path: "credentials.json", content: "nope" },
+      ctx(root),
+    );
+    assert.equal(badWrite.ok, false);
   });
 
   it("lists and searches without leaving the workspace", async () => {

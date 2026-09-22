@@ -49,7 +49,8 @@ export function createDefaultPolicy(options: DefaultPolicyOptions = {}): PolicyE
       if (
         (input.toolName === "read_file" ||
           input.toolName === "list_dir" ||
-          input.toolName === "search_files") &&
+          input.toolName === "search_files" ||
+          input.toolName === "write_file") &&
         typeof input.args.path === "string"
       ) {
         try {
@@ -89,6 +90,17 @@ export function createDefaultPolicy(options: DefaultPolicyOptions = {}): PolicyE
           verdict: "ask",
           reason: "Live GitHub write requires human approval",
           ruleId: "ask_github_live",
+        };
+      }
+
+      if (
+        process.env.LCA_DEPLOY_LIVE === "1" &&
+        (input.toolName === "deploy_staging" || input.toolName === "deploy_docker_build")
+      ) {
+        return {
+          verdict: "ask",
+          reason: "Live staging deploy requires human approval",
+          ruleId: "ask_deploy_live",
         };
       }
 
