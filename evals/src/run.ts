@@ -1,8 +1,8 @@
 import { createAgentRun, runAgentLoop } from "@lca/agent-core";
 import { createHeuristicLlm } from "@lca/llm";
 import { createDefaultPolicy } from "@lca/policy";
-import { createCalculatorTool, createWeatherTool } from "@lca/tools";
-import { PHASE1_CASES, type EvalCase } from "./cases.js";
+import { createDefaultTools } from "@lca/tools";
+import { ALL_CASES, type EvalCase } from "./cases.js";
 
 interface CaseResult {
   id: string;
@@ -12,31 +12,32 @@ interface CaseResult {
 
 async function runCase(c: EvalCase): Promise<CaseResult> {
   const failures: string[] = [];
-  const tools = [
-    createCalculatorTool(),
-    createWeatherTool({
-      fetchImpl: c.mockWeather
-        ? async () =>
-            new Response(
-              JSON.stringify({
-                current: {
-                  temperature_2m: 21,
-                  weather_code: 0,
-                  wind_speed_10m: 8,
-                },
-              }),
-              { status: 200 },
-            )
-        : fetch,
-    }),
-  ];
+  const tools = createDefaultTools({
+    fetchImpl: c.mockWeather
+      ? async () =>
+          new Response(
+            JSON.stringify({
+              current: {
+                temperature_2m: 21,
+                weather_code: 0,
+                wind_speed_10m: 8,
+              },
+            }),
+            { status: 200 },
+          )
+      : fetch,
+  });
 
   const run = createAgentRun(c.goal);
-  const result = await runAgentLoop(run, {
-    llm: createHeuristicLlm(),
-    tools,
-    policy: createDefaultPolicy(),
-  });
+  const result = await runAgentLoop(
+    run,
+    {
+      llm: createHeuristicLlm(),
+      tools,
+      policy: createDefaultPolicy(),
+    },
+    { workspaceRoot: c.workspaceRoot },
+  );
 
   if (c.expectStatus && result.status !== c.expectStatus) {
     failures.push(`status: expected ${c.expectStatus}, got ${result.status}`);
@@ -51,6 +52,13 @@ async function runCase(c: EvalCase): Promise<CaseResult> {
       if (!usedTools.includes(name)) {
         failures.push(`tools: missing expected '${name}' (got [${usedTools.join(", ")}])`);
       }
+    }
+  }
+
+  if (c.expectObservationOk === false) {
+    const anyFail = result.steps.some((s) => s.observations.some((o) => !o.ok));
+    if (!anyFail) {
+      failures.push("expected a failed observation, all ok");
     }
   }
 
@@ -71,7 +79,7 @@ async function runCase(c: EvalCase): Promise<CaseResult> {
 
   if (c.expectAnswerIncludes) {
     for (const needle of c.expectAnswerIncludes) {
-      if (!result.finalAnswer?.includes(needle)) {
+      if (!result.finalAnswer?.toLowerCase().includes(needle.toLowerCase())) {
         failures.push(`answer missing '${needle}': ${result.finalAnswer}`);
       }
     }
@@ -81,9 +89,9 @@ async function runCase(c: EvalCase): Promise<CaseResult> {
 }
 
 async function main() {
-  console.log(`Running ${PHASE1_CASES.length} Phase 1 eval cases (heuristic provider)...\n`);
+  console.log(`Running ${ALL_CASES.length} eval cases (heuristic provider)...\n`);
   const results: CaseResult[] = [];
-  for (const c of PHASE1_CASES) {
+  for (const c of ALL_CASES) {
     const r = await runCase(c);
     results.push(r);
     const mark = r.passed ? "PASS" : "FAIL";

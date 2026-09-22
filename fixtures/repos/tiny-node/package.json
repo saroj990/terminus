@@ -1,0 +1,9 @@
+{
+  "name": "tiny-node",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "test": "node src/index.js"
+  }
+}

@@ -1,6 +1,6 @@
 # Local Coding Agent
 
-Production-oriented **Coding & Deployment AI Agent** platform, built phase-by-phase from [AI_Agent_Engineering_Roadmap.md](./AI_Agent_Engineering_Roadmap.md).
+Production-oriented **Coding & Deployment AI Agent** platform, built phase-by-phase from the local roadmap in `docs/` (gitignored).
 
 ## Principles
 
@@ -16,9 +16,10 @@ apps/cli              # Phase 0/1 runner
 packages/agent-core   # AgentRun, ToolSpec, Think→Act→Observe loop
 packages/policy       # allow / deny / ask + path jail helpers
 packages/logger       # structured JSON logs with secret redaction
-packages/tools        # calculator, weather (Phase 1)
+packages/tools        # calculator, weather, file tools, jailed shell
 packages/llm          # heuristic + OpenAI-compatible (Ollama/OpenAI)
-evals/                # Phase 1 golden cases
+evals/                # Phase 1–2 golden cases
+fixtures/repos        # tiny-node fixture for file/shell evals
 ```
 
 ## Quick start
@@ -32,13 +33,23 @@ pnpm eval
 
 # Heuristic provider (default — no API key)
 pnpm agent -- "What is (12 + 8) * 3?"
-pnpm agent -- "What is the weather in London?"
+pnpm agent -- "List the project files"
+pnpm agent -- "Read the file README.md"
 
 # Optional: Ollama
 # LCA_PROVIDER=ollama OLLAMA_MODEL=llama3.2 pnpm agent -- "Calculate 15 * 4"
 ```
 
-## Phase docs
+## Local docs (not committed)
 
-- [Phase 0–1 core concepts](./docs/PHASE_0_1_CORE_CONCEPTS.md) — how the runtime works (start here to learn)
-- [Phase 0–1 checklist](./docs/PHASE_0_1_CHECKLIST.md) — scope, guardrails, exit criteria
+Planning notes live under `docs/` and are gitignored. Open them locally:
+
+- `docs/AI_Agent_Engineering_Roadmap.md`
+- `docs/PHASE_0_1_CORE_CONCEPTS.md`
+- `docs/PHASE_0_1_CHECKLIST.md`
+- `docs/GITHUB_ISSUES.md`
+
+## Git hygiene
+
+- Copy env template: `cp .env.example .env` (never commit `.env`)
+- Ignored by default: `node_modules/`, `dist/`, `.env`, logs, coverage, secrets — see [`.gitignore`](./.gitignore)
