@@ -20,8 +20,21 @@ const mockExec: ExecFn = async (argv) => {
   return { code: 1, stdout: "", stderr: "unexpected" };
 };
 
+/** Unit tests expect dry-run; unset LCA_GITHUB_LIVE if the shell or .env enabled live mode. */
+function withoutGithubLive<T>(fn: () => T): T {
+  const prev = process.env.LCA_GITHUB_LIVE;
+  delete process.env.LCA_GITHUB_LIVE;
+  try {
+    return fn();
+  } finally {
+    if (prev === undefined) delete process.env.LCA_GITHUB_LIVE;
+    else process.env.LCA_GITHUB_LIVE = prev;
+  }
+}
+
 describe("github tools", () => {
   it("dry-runs issue creation", async () => {
+    await withoutGithubLive(async () => {
     const tool = createGithubCreateIssueTool({ exec: mockExec });
     const result = await tool.execute(
       { title: "Bug in login" },
@@ -30,6 +43,7 @@ describe("github tools", () => {
     assert.equal(result.ok, true);
     assert.match(result.summary, /DRY RUN/i);
     assert.match(result.summary, /Bug in login/);
+    });
   });
 
   it("reviews commits read-only", async () => {
@@ -40,6 +54,7 @@ describe("github tools", () => {
   });
 
   it("dry-runs open pr", async () => {
+    await withoutGithubLive(async () => {
     const tool = createGithubOpenPrTool({ exec: mockExec });
     const result = await tool.execute(
       { title: "Fix login", head: "fix-login" },
@@ -47,5 +62,6 @@ describe("github tools", () => {
     );
     assert.equal(result.ok, true);
     assert.match(result.summary, /DRY RUN/i);
+    });
   });
 });
