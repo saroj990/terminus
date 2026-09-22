@@ -94,15 +94,14 @@ import { createLogger } from "@lca/logger";
 import { createDefaultPolicy } from "@lca/policy";
 
 /**
- * createPhase1Tools:
- *   Returns the tool list for Phase 1 lessons:
- *     - calculator  (sideEffect: "read")     — safe arithmetic
- *     - get_weather (sideEffect: "external") — Open-Meteo HTTP call
+ * createDefaultTools:
+ *   Phase 1: calculator, get_weather
+ *   Phase 2: read_file, list_dir, search_files, run_shell (jailed / allowlisted)
  *
  *   Each tool is a ToolSpec: { name, description, sideEffect, inputSchema, execute }.
  *   The LLM sees name/description/schema; your runtime calls execute().
  */
-import { createPhase1Tools } from "@lca/tools";
+import { createDefaultTools } from "@lca/tools";
 
 /**
  * loadEnvFile:
@@ -110,7 +109,7 @@ import { createPhase1Tools } from "@lca/tools";
  *   WITHOUT overriding variables already set in your shell.
  *   (So `LCA_PROVIDER=ollama pnpm agent ...` still wins over .env.)
  */
-import { loadEnvFile } from "./env.js";
+import { loadEnvFile, resolveWorkspaceRoot } from "./env.js";
 
 // ---------------------------------------------------------------------------
 // main() — one user goal → one agent run → printed answer
@@ -120,6 +119,7 @@ async function main() {
   // Load KEY=value pairs from .env into process.env (if the file exists).
   // Examples: LCA_PROVIDER, OLLAMA_MODEL, OPENAI_API_KEY, WEATHER_LAT, ...
   loadEnvFile();
+  const workspaceRoot = resolveWorkspaceRoot();
 
   /**
    * process.argv is Node's list of CLI arguments.
@@ -174,7 +174,7 @@ async function main() {
   const log = logger.child({ runId: run.id });
 
   // First breadcrumb: we accepted a goal and are about to start the loop.
-  log.info("agent_run_started", { goal });
+  log.info("agent_run_started", { goal, workspaceRoot });
 
   /**
    * ============================================================
@@ -208,7 +208,7 @@ async function main() {
       llm: createLlmFromEnv(),
 
       // Hands: Phase 1 tools the model can call by name.
-      tools: createPhase1Tools(),
+      tools: createDefaultTools(),
 
       // Guardrails: allow / deny / ask before any tool runs.
       policy: createDefaultPolicy(),
@@ -243,7 +243,7 @@ async function main() {
     {
       // Absolute path of the current working directory when you launched the CLI.
       // Future file tools will refuse paths that escape this root (path jail).
-      workspaceRoot: process.cwd(),
+      workspaceRoot,
     },
   );
 

@@ -163,7 +163,9 @@ export function createHeuristicLlm(): LlmClient {
        * If matched, extract an expression string for the calculator tool.
        */
       const mathHint =
-        /[\d)]\s*[+\-*/]\s*[\d(]|what\s+is\s+.+\d|calculate|compute|\(.*\d+.*\)/i.test(user);
+        /[\d)]\s*[+\-*/]\s*[\d(]|what\s+is\s+.+\d|calculate|compute|\(.*\d+.*\)/i.test(
+          user,
+        ) && !/\bread(?:\s+the)?\s+file\b/i.test(user);
       if (mathHint && toolNames.has("calculator")) {
         const expression = extractExpression(user);
         return {
@@ -179,6 +181,9 @@ export function createHeuristicLlm(): LlmClient {
         };
       }
 
+      const fileCall = routeFileAndShell(user, toolNames);
+      if (fileCall) return fileCall;
+
       /**
        * NO TOOL NEEDED
        * --------------
@@ -187,7 +192,7 @@ export function createHeuristicLlm(): LlmClient {
        */
       return {
         content:
-          "I can help with arithmetic (calculator) or weather lookups (get_weather). Try asking a math or weather question.",
+          "I can help with arithmetic, weather, listing/reading/searching workspace files, or allowlisted shell commands.",
         finishReason: "stop",
       };
     },
@@ -206,6 +211,51 @@ export function createHeuristicLlm(): LlmClient {
  *   2) text after "what is" / "calculate" / "compute"
  *   3) first run of digits and arithmetic characters
  */
+function routeFileAndShell(
+  user: string,
+  toolNames: Set<string>,
+): LlmResponse | undefined {
+  const call = (name: string, args: Record<string, unknown>): LlmResponse => ({
+    content: "",
+    finishReason: "tool_calls",
+    toolCalls: [{ id: createToolCallId(), name, arguments: args }],
+  });
+
+  if (toolNames.has("run_shell") && /\b(curl|wget|sudo|rm\s+-rf)\b/i.test(user)) {
+    const exe = user.match(/\b(curl|wget|sudo)\b/i)?.[1]?.toLowerCase() ?? "curl";
+    return call("run_shell", { argv: [exe, "https://example.invalid"] });
+  }
+
+  if (toolNames.has("run_shell") && /\brun\s+(pwd|ls)\b/i.test(user)) {
+    const cmd = user.match(/\brun\s+(pwd|ls)\b/i)?.[1] ?? "pwd";
+    return call("run_shell", { argv: cmd === "ls" ? ["ls", "-1"] : ["pwd"] });
+  }
+
+  if (toolNames.has("read_file")) {
+    const readMatch = user.match(/read(?:\s+the)?\s+file\s+(.+?)[?.!]*$/i);
+    if (readMatch?.[1]) {
+      return call("read_file", { path: readMatch[1].trim().replace(/^["']|["']$/g, "") });
+    }
+  }
+
+  if (toolNames.has("search_files")) {
+    const searchMatch = user.match(/search(?:\s+files)?(?:\s+for)?\s+['"]?([\w.-]+)['"]?/i);
+    if (/\bsearch\b/i.test(user) && searchMatch?.[1]) {
+      return call("search_files", { query: searchMatch[1], path: "." });
+    }
+  }
+
+  if (
+    toolNames.has("list_dir") &&
+    /\b(list|summarize|ls)\b/i.test(user) &&
+    /\b(project|files|dir|directory|repo|workspace)\b/i.test(user)
+  ) {
+    return call("list_dir", { path: "." });
+  }
+
+  return undefined;
+}
+
 function extractExpression(user: string): string {
   const paren = user.match(/\(([^)]+)\)/);
   if (paren?.[0] && /[+\-*/]/.test(paren[0])) {

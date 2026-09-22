@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createHeuristicLlm } from "./index.js";
-import { createCalculatorTool, createWeatherTool } from "@lca/tools";
+import { createCalculatorTool, createDefaultTools, createWeatherTool } from "@lca/tools";
 
 describe("heuristic llm", () => {
   const tools = [createCalculatorTool(), createWeatherTool()];
@@ -31,5 +31,16 @@ describe("heuristic llm", () => {
       (res.toolCalls?.[0]?.arguments as { location?: string })?.location,
       "Tokyo",
     );
+  });
+
+  it("routes read_file for workspace paths", async () => {
+    const res = await llm.complete({
+      messages: [
+        { role: "system", content: "x" },
+        { role: "user", content: "Read the file README.md" },
+      ],
+      tools: createDefaultTools(),
+    });
+    assert.equal(res.toolCalls?.[0]?.name, "read_file");
   });
 });
