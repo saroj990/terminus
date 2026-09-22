@@ -102,4 +102,60 @@ describe("runAgentLoop", () => {
     );
     assert.match(seen, /package_manager: pnpm/);
   });
+
+  it("pauses on policy ask and resumes after approve", async () => {
+    let turn = 0;
+    const llm: LlmClient = {
+      async complete({ messages }) {
+        turn += 1;
+        const last = messages[messages.length - 1];
+        if (last?.role === "tool") {
+          return { content: "did the thing", finishReason: "stop" };
+        }
+        return {
+          finishReason: "tool_calls",
+          toolCalls: [{ id: "c1", name: "danger", arguments: { action: "demo" } }],
+        };
+      },
+    };
+    let executed = false;
+    const tools: ToolSpec[] = [
+      {
+        name: "danger",
+        description: "danger",
+        sideEffect: "destructive",
+        inputSchema: { type: "object" },
+        async execute() {
+          executed = true;
+          return { ok: true, summary: "done demo" };
+        },
+      },
+    ];
+    const policy: PolicyEngine = {
+      evaluateToolCall: () => ({ verdict: "ask", reason: "need human", ruleId: "ask" }),
+    };
+    const captured: { messages: import("./index.js").AgentMessage[] } = { messages: [] };
+    const run = createAgentRun("Confirm the action demo");
+    const paused = await runAgentLoop(
+      run,
+      {
+        llm,
+        tools,
+        policy,
+        onCheckpoint: (p) => {
+          captured.messages = p.messages;
+        },
+      },
+    );
+    assert.equal(paused.status, "awaiting_approval");
+    assert.equal(executed, false);
+
+    const resumed = await runAgentLoop(run, { llm, tools, policy }, {
+      messages: captured.messages,
+      approval: "approve",
+    });
+    assert.equal(executed, true);
+    assert.equal(resumed.status, "succeeded");
+    assert.match(resumed.finalAnswer ?? "", /did the thing/);
+  });
 });

@@ -79,4 +79,15 @@ describe("heuristic llm", () => {
     });
     assert.equal(recall.toolCalls?.[0]?.name, "recall");
   });
+
+  it("routes confirm_action", async () => {
+    const res = await llm.complete({
+      messages: [
+        { role: "system", content: "x" },
+        { role: "user", content: "Confirm the action demo" },
+      ],
+      tools: createDefaultTools(),
+    });
+    assert.equal(res.toolCalls?.[0]?.name, "confirm_action");
+  });
 });

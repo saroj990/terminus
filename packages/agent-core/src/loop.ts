@@ -30,7 +30,7 @@
  *               policy.evaluate → allow | deny | ask
  *               allow  → tool.execute(...)
  *               deny   → record error observation (do not execute)
- *               ask    → status=awaiting_approval, STOP (HITL stub)
+ *               ask    → status=awaiting_approval, STOP (checkpoint; resume with approval)
  *     OBSERVE → append role:"tool" messages with JSON results
  *               record AgentStep, call onStep callback
  *
@@ -67,6 +67,10 @@ export interface AgentLoopOptions {
   signal?: AbortSignal;
   /** Long-term memory / session facts appended to the system prompt */
   extraSystem?: string;
+  /** Resume conversation (HITL / crash-resume). */
+  messages?: AgentMessage[];
+  /** Resolve a paused `ask` verdict, then continue Think→Act→Observe. */
+  approval?: "approve" | "deny";
 }
 
 /**
@@ -82,6 +86,7 @@ export interface AgentLoopDeps {
   tools: ToolSpec[];
   policy: PolicyEngine;
   onStep?: (step: AgentStep, run: AgentRun) => void;
+  onCheckpoint?: (payload: { run: AgentRun; messages: AgentMessage[] }) => void;
 }
 
 /**
@@ -136,19 +141,41 @@ export async function runAgentLoop(
   const system = options.extraSystem
     ? `${SYSTEM_PROMPT}\n\n${options.extraSystem}`
     : SYSTEM_PROMPT;
-  const messages: AgentMessage[] = [
-    { role: "system", content: system },
-    { role: "user", content: run.goal },
-  ];
+  const messages: AgentMessage[] = options.messages?.length
+    ? options.messages
+    : [
+        { role: "system", content: system },
+        { role: "user", content: run.goal },
+      ];
+
+  const persist = (): void => {
+    run.updatedAt = nowIso();
+    deps.onCheckpoint?.({ run, messages });
+  };
+
+  const actCtx: ActContext = {
+    run,
+    deps,
+    options,
+    workspaceRoot,
+    toolMap,
+    messages,
+  };
 
   try {
+    if (options.approval) {
+      const pausedAgain = await resolveHitl(actCtx, options.approval);
+      persist();
+      if (pausedAgain) return run;
+    }
+
     // ---- Main loop: each iteration is one Think → Act → Observe cycle --------
-    for (let i = 0; i < maxSteps; i++) {
+    for (let i = run.steps.length; i < maxSteps; i++) {
       // Cooperative cancellation (e.g. user hit Ctrl+C if wired to AbortController).
       if (options.signal?.aborted) {
         run.status = "cancelled";
         run.error = "Aborted";
-        run.updatedAt = nowIso();
+        persist();
         return run;
       }
 
@@ -191,6 +218,7 @@ export async function runAgentLoop(
         };
         run.steps.push(step);
         deps.onStep?.(step, run); // notify logger/UI
+        persist();
         return run;
       }
 
@@ -275,12 +303,10 @@ export async function runAgentLoop(
           continue; // do not call tool.execute
         }
 
-        // ---- Human approval required (HITL stub) -----------------------------
-        // Used for sideEffect "destructive" today. We stop the whole run so a
-        // future UI can ask the user; we do not silently continue.
+        // ---- Human approval required — pause, checkpoint, do not execute ----
         if (decision.verdict === "ask") {
           run.status = "awaiting_approval";
-          run.updatedAt = nowIso();
+          run.metadata = { ...run.metadata, pausedCallIndex: toolCalls.indexOf(call) };
           const obs: Observation = {
             toolCallId: call.id,
             toolName: call.name,
@@ -301,7 +327,8 @@ export async function runAgentLoop(
           };
           run.steps.push(step);
           deps.onStep?.(step, run);
-          return run; // paused — caller decides next action later
+          persist();
+          return run;
         }
 
         // ---- allow → execute the tool ----------------------------------------
@@ -379,7 +406,7 @@ export async function runAgentLoop(
       };
       run.steps.push(step);
       deps.onStep?.(step, run);
-      run.updatedAt = nowIso();
+      persist();
 
       // Loop continues → next THINK will see the new tool messages.
     }
@@ -388,7 +415,7 @@ export async function runAgentLoop(
     // Model kept requesting tools (or never produced a final text answer).
     run.status = "failed";
     run.error = `Exceeded maxSteps=${maxSteps}`;
-    run.updatedAt = nowIso();
+    persist();
     return run;
   } catch (err) {
     /**
@@ -397,7 +424,201 @@ export async function runAgentLoop(
      */
     run.status = "failed";
     run.error = err instanceof Error ? err.message : String(err);
-    run.updatedAt = nowIso();
+    persist();
     return run;
+  }
+}
+
+interface ActContext {
+  run: AgentRun;
+  deps: AgentLoopDeps;
+  options: AgentLoopOptions;
+  workspaceRoot: string;
+  toolMap: Map<string, ToolSpec>;
+  messages: AgentMessage[];
+}
+
+async function resolveHitl(ctx: ActContext, approval: "approve" | "deny"): Promise<boolean> {
+  const { run, messages } = ctx;
+  const step = run.steps[run.steps.length - 1];
+  const callIndex = Number(run.metadata?.pausedCallIndex ?? -1);
+  const call = step?.toolCalls[callIndex];
+  if (!step || !call) {
+    run.status = "failed";
+    run.error = "No paused tool call to approve";
+    return false;
+  }
+
+  const pending = step.observations.find((o) => o.toolCallId === call.id);
+  if (approval === "deny") {
+    const obs: Observation = {
+      toolCallId: call.id,
+      toolName: call.name,
+      ok: false,
+      summary: "User denied this action",
+      error: "denied",
+      durationMs: 0,
+      policy: pending?.policy ?? { verdict: "ask", reason: "denied" },
+    };
+    replaceObs(step, obs);
+    messages.push({
+      role: "tool",
+      content: JSON.stringify({ ok: false, error: "User denied this action" }),
+      toolCallId: call.id,
+      name: call.name,
+    });
+  } else {
+    const executed = await executeAllowed(ctx, call, pending);
+    replaceObs(step, executed);
+    messages.push({
+      role: "tool",
+      content: JSON.stringify({
+        ok: executed.ok,
+        summary: executed.summary,
+        data: executed.data,
+        error: executed.error,
+      }),
+      toolCallId: call.id,
+      name: call.name,
+    });
+  }
+
+  for (let j = callIndex + 1; j < step.toolCalls.length; j++) {
+    const next = step.toolCalls[j];
+    if (!next) continue;
+    const outcome = await processRemainingCall(ctx, next, j);
+    if (outcome === "pause") return true;
+  }
+
+  if (run.metadata && "pausedCallIndex" in run.metadata) {
+    delete run.metadata.pausedCallIndex;
+  }
+  run.status = "running";
+  run.error = undefined;
+  return false;
+}
+
+function replaceObs(step: AgentStep, obs: Observation): void {
+  const idx = step.observations.findIndex((o) => o.toolCallId === obs.toolCallId);
+  if (idx >= 0) step.observations[idx] = obs;
+  else step.observations.push(obs);
+}
+
+async function processRemainingCall(
+  ctx: ActContext,
+  call: ToolCallRequest,
+  callIndex: number,
+): Promise<"pause" | "ok"> {
+  const tool = ctx.toolMap.get(call.name);
+  const decision = ctx.deps.policy.evaluateToolCall({
+    toolName: call.name,
+    sideEffect: tool?.sideEffect ?? "destructive",
+    args: call.arguments,
+    workspaceRoot: ctx.workspaceRoot,
+  });
+
+  if (decision.verdict === "ask") {
+    ctx.run.status = "awaiting_approval";
+    ctx.run.metadata = { ...ctx.run.metadata, pausedCallIndex: callIndex };
+    const obs: Observation = {
+      toolCallId: call.id,
+      toolName: call.name,
+      ok: false,
+      summary: `Awaiting approval: ${decision.reason}`,
+      error: "awaiting_approval",
+      durationMs: 0,
+      policy: decision,
+    };
+    const step = ctx.run.steps[ctx.run.steps.length - 1];
+    if (step) step.observations.push(obs);
+    return "pause";
+  }
+
+  if (!tool || decision.verdict === "deny") {
+    const obs: Observation = {
+      toolCallId: call.id,
+      toolName: call.name,
+      ok: false,
+      summary: !tool ? `Unknown tool: ${call.name}` : `Policy denied: ${decision.reason}`,
+      error: !tool ? `Unknown tool: ${call.name}` : decision.reason,
+      durationMs: 0,
+      policy: decision,
+    };
+    ctx.run.steps[ctx.run.steps.length - 1]?.observations.push(obs);
+    ctx.messages.push({
+      role: "tool",
+      content: JSON.stringify({ ok: false, error: obs.error }),
+      toolCallId: call.id,
+      name: call.name,
+    });
+    return "ok";
+  }
+
+  const obs = await executeAllowed(ctx, call, { policy: decision } as Observation);
+  ctx.run.steps[ctx.run.steps.length - 1]?.observations.push(obs);
+  ctx.messages.push({
+    role: "tool",
+    content: JSON.stringify({
+      ok: obs.ok,
+      summary: obs.summary,
+      data: obs.data,
+      error: obs.error,
+    }),
+    toolCallId: call.id,
+    name: call.name,
+  });
+  return "ok";
+}
+
+async function executeAllowed(
+  ctx: ActContext,
+  call: ToolCallRequest,
+  pending: Observation | undefined,
+): Promise<Observation> {
+  const tool = ctx.toolMap.get(call.name);
+  const policy = pending?.policy ?? {
+    verdict: "allow" as const,
+    reason: "HITL approved",
+    ruleId: "hitl_approve",
+  };
+  if (!tool) {
+    return {
+      toolCallId: call.id,
+      toolName: call.name,
+      ok: false,
+      summary: `Unknown tool: ${call.name}`,
+      error: `Unknown tool: ${call.name}`,
+      durationMs: 0,
+      policy,
+    };
+  }
+  const t0 = Date.now();
+  try {
+    const result = await tool.execute(call.arguments, {
+      runId: ctx.run.id,
+      workspaceRoot: ctx.workspaceRoot,
+      signal: ctx.options.signal,
+    });
+    return {
+      toolCallId: call.id,
+      toolName: call.name,
+      ok: result.ok,
+      summary: result.summary,
+      data: result.data,
+      error: result.error,
+      durationMs: Date.now() - t0,
+      policy: { ...policy, verdict: "allow", reason: "HITL approved", ruleId: "hitl_approve" },
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      toolCallId: call.id,
+      toolName: call.name,
+      ok: false,
+      summary: `Tool threw: ${message}`,
+      error: message,
+      durationMs: Date.now() - t0,
+      policy,
+    };
   }
 }

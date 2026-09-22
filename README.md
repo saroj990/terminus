@@ -20,7 +20,7 @@ packages/tools        # calculator, weather, files, shell, RAG, memory
 packages/rag          # chunk + hashed embeddings + cosine retrieval
 packages/memory       # typed prefs/tasks in .lca/memory.json (no secrets)
 packages/llm          # heuristic + OpenAI-compatible (Ollama/OpenAI)
-evals/                # Phase 1–4 golden cases
+evals/                # Phase 1–5 golden cases
 fixtures/repos        # tiny-node fixture
 ```
 
@@ -39,6 +39,8 @@ pnpm agent -- "List the project files"
 pnpm agent -- "Read the file README.md"
 pnpm agent -- "Remember that I prefer pnpm as the package manager"
 pnpm agent -- "What package manager do I prefer?"
+pnpm agent -- "Confirm the action demo"
+pnpm agent -- --approve
 
 # Optional: Ollama
 # LCA_PROVIDER=ollama OLLAMA_MODEL=llama3.2 pnpm agent -- "Calculate 15 * 4"

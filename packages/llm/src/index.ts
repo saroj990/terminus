@@ -181,6 +181,9 @@ export function createHeuristicLlm(): LlmClient {
         };
       }
 
+      const hitlCall = routeHitl(user, toolNames);
+      if (hitlCall) return hitlCall;
+
       const memoryCall = routeMemory(user, toolNames);
       if (memoryCall) return memoryCall;
 
@@ -195,10 +198,27 @@ export function createHeuristicLlm(): LlmClient {
        */
       return {
         content:
-          "I can help with arithmetic, weather, files, codebase search, allowlisted shell, or remembering preferences and past tasks.",
+          "I can help with arithmetic, weather, files, codebase search, allowlisted shell, memory, or confirm_action (needs approval).",
         finishReason: "stop",
       };
     },
+  };
+}
+
+function routeHitl(user: string, toolNames: Set<string>): LlmResponse | undefined {
+  if (!toolNames.has("confirm_action")) return undefined;
+  if (!/\bconfirm\b/i.test(user)) return undefined;
+  const named = user.match(/action\s+([\w.-]+)/i)?.[1] ?? "demo";
+  return {
+    content: "",
+    finishReason: "tool_calls",
+    toolCalls: [
+      {
+        id: createToolCallId(),
+        name: "confirm_action",
+        arguments: { action: named },
+      },
+    ],
   };
 }
 
