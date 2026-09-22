@@ -81,6 +81,17 @@ export function createDefaultPolicy(options: DefaultPolicyOptions = {}): PolicyE
         }
       }
 
+      if (
+        (input.toolName === "github_create_issue" || input.toolName === "github_open_pr") &&
+        process.env.LCA_GITHUB_LIVE === "1"
+      ) {
+        return {
+          verdict: "ask",
+          reason: "Live GitHub write requires human approval",
+          ruleId: "ask_github_live",
+        };
+      }
+
       if (askSideEffects.has(input.sideEffect)) {
         return {
           verdict: "ask",

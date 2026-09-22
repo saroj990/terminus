@@ -59,6 +59,24 @@ describe("createDefaultPolicy", () => {
     });
     assert.equal(secret.verdict, "deny");
   });
+
+  it("asks for live GitHub writes", () => {
+    const prev = process.env.LCA_GITHUB_LIVE;
+    process.env.LCA_GITHUB_LIVE = "1";
+    try {
+      const policy = createDefaultPolicy();
+      const d = policy.evaluateToolCall({
+        toolName: "github_create_issue",
+        sideEffect: "external",
+        args: { title: "x" },
+        workspaceRoot: "/tmp/ws",
+      });
+      assert.equal(d.verdict, "ask");
+    } finally {
+      if (prev === undefined) delete process.env.LCA_GITHUB_LIVE;
+      else process.env.LCA_GITHUB_LIVE = prev;
+    }
+  });
 });
 
 describe("assertPathInsideWorkspace", () => {

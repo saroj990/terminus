@@ -1,5 +1,5 @@
 {
-  "name": "@lca/tools",
+  "name": "@lca/github",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,14 +14,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test src/index.test.ts src/files.test.ts src/rag.test.ts src/memory.test.ts src/confirm.test.ts src/github.test.ts"
-  },
-  "dependencies": {
-    "@lca/agent-core": "workspace:*",
-    "@lca/policy": "workspace:*",
-    "@lca/rag": "workspace:*",
-    "@lca/memory": "workspace:*",
-    "@lca/github": "workspace:*"
+    "test": "node --import tsx --test src/index.test.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

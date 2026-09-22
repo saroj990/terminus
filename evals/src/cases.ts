@@ -23,6 +23,7 @@ export interface EvalCase {
 }
 
 const repoRoot = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
+export const REPO_ROOT = repoRoot;
 export const TINY_NODE = path.join(repoRoot, "fixtures/repos/tiny-node");
 
 export const PHASE1_CASES: EvalCase[] = [
@@ -220,10 +221,41 @@ export const PHASE5_CASES: EvalCase[] = [
   },
 ];
 
+export const PHASE6_CASES: EvalCase[] = [
+  {
+    id: "github_issue_dry_run",
+    kind: "task_success",
+    goal: "Create a GitHub issue titled Bug in login",
+    expectTools: ["github_create_issue"],
+    expectAnswerIncludes: ["DRY RUN", "Bug"],
+    expectStatus: "succeeded",
+    useTempWorkspace: true,
+  },
+  {
+    id: "github_open_pr_dry_run",
+    kind: "task_success",
+    goal: "Open a pull request titled Fix login bug",
+    expectTools: ["github_open_pr"],
+    expectAnswerIncludes: ["DRY RUN", "Fix"],
+    expectStatus: "succeeded",
+    useTempWorkspace: true,
+  },
+  {
+    id: "github_review_commits",
+    kind: "task_success",
+    goal: "Review recent commits",
+    expectTools: ["github_review_commits"],
+    expectAnswerIncludes: ["Recent commits"],
+    expectStatus: "succeeded",
+    workspaceRoot: REPO_ROOT,
+  },
+];
+
 export const ALL_CASES = [
   ...PHASE1_CASES,
   ...PHASE2_CASES,
   ...PHASE3_CASES,
   ...PHASE4_CASES,
   ...PHASE5_CASES,
+  ...PHASE6_CASES,
 ];
