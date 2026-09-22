@@ -13,7 +13,8 @@
     "@lca/agent-core": "workspace:*",
     "@lca/llm": "workspace:*",
     "@lca/policy": "workspace:*",
-    "@lca/tools": "workspace:*"
+    "@lca/tools": "workspace:*",
+    "@lca/memory": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

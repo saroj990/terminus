@@ -1,7 +1,11 @@
 import { createAgentRun, runAgentLoop } from "@lca/agent-core";
 import { createHeuristicLlm } from "@lca/llm";
+import { formatMemoryPrompt, loadMemory, upsertMemory } from "@lca/memory";
 import { createDefaultPolicy } from "@lca/policy";
 import { createDefaultTools } from "@lca/tools";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { ALL_CASES, type EvalCase } from "./cases.js";
 
 interface CaseResult {
@@ -28,6 +32,20 @@ async function runCase(c: EvalCase): Promise<CaseResult> {
       : fetch,
   });
 
+  const workspaceRoot = c.useTempWorkspace
+    ? fs.mkdtempSync(path.join(os.tmpdir(), "lca-eval-"))
+    : c.workspaceRoot;
+
+  if (c.seedMemory && workspaceRoot) {
+    for (const rec of c.seedMemory) {
+      upsertMemory(workspaceRoot, rec);
+    }
+  }
+
+  const extraSystem = workspaceRoot
+    ? formatMemoryPrompt(loadMemory(workspaceRoot))
+    : undefined;
+
   const run = createAgentRun(c.goal);
   const result = await runAgentLoop(
     run,
@@ -36,7 +54,7 @@ async function runCase(c: EvalCase): Promise<CaseResult> {
       tools,
       policy: createDefaultPolicy(),
     },
-    { workspaceRoot: c.workspaceRoot },
+    { workspaceRoot, extraSystem },
   );
 
   if (c.expectStatus && result.status !== c.expectStatus) {

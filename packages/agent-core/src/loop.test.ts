@@ -82,4 +82,24 @@ describe("runAgentLoop", () => {
     assert.equal(result.steps[0]?.observations[0]?.ok, false);
     assert.equal(result.steps[0]?.observations[0]?.policy.verdict, "deny");
   });
+
+  it("injects extraSystem into the system prompt", async () => {
+    let seen = "";
+    const llm: LlmClient = {
+      async complete({ messages }) {
+        seen = messages[0]?.content ?? "";
+        return { content: "ok", finishReason: "stop" };
+      },
+    };
+    const policy: PolicyEngine = {
+      evaluateToolCall: () => ({ verdict: "allow", reason: "test" }),
+    };
+    const run = createAgentRun("hi");
+    await runAgentLoop(
+      run,
+      { llm, tools: [], policy },
+      { extraSystem: "Known user/project memory:\n- [preference] package_manager: pnpm" },
+    );
+    assert.match(seen, /package_manager: pnpm/);
+  });
 });

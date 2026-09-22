@@ -181,6 +181,9 @@ export function createHeuristicLlm(): LlmClient {
         };
       }
 
+      const memoryCall = routeMemory(user, toolNames);
+      if (memoryCall) return memoryCall;
+
       const fileCall = routeFileAndShell(user, toolNames);
       if (fileCall) return fileCall;
 
@@ -192,25 +195,58 @@ export function createHeuristicLlm(): LlmClient {
        */
       return {
         content:
-          "I can help with arithmetic, weather, listing/reading/searching workspace files, or allowlisted shell commands.",
+          "I can help with arithmetic, weather, files, codebase search, allowlisted shell, or remembering preferences and past tasks.",
         finishReason: "stop",
       };
     },
   };
 }
 
-/**
- * Pull a math expression out of messy natural language.
- *
- * Examples:
- *   "What is (12 + 8) * 3?"  →  "(12+8)*3"
- *   "Calculate 100 / 4"      →  "100 / 4"
- *
- * Strategy (first match wins):
- *   1) parenthetical expression, optionally with a trailing operator+number
- *   2) text after "what is" / "calculate" / "compute"
- *   3) first run of digits and arithmetic characters
- */
+function routeMemory(user: string, toolNames: Set<string>): LlmResponse | undefined {
+  const call = (name: string, args: Record<string, unknown>): LlmResponse => ({
+    content: "",
+    finishReason: "tool_calls",
+    toolCalls: [{ id: createToolCallId(), name, arguments: args }],
+  });
+
+  if (toolNames.has("remember") && /\bremember\b/i.test(user)) {
+    const prefer = user.match(
+      /prefer\s+(\S+?)(?:\s+as(?:\s+the)?\s+(.+?))?[?.!]*$/i,
+    );
+    if (prefer?.[1]) {
+      const value = prefer[1].replace(/[?.!,]+$/, "");
+      const key = (prefer[2] ?? "preference")
+        .trim()
+        .replace(/[?.!]+$/, "")
+        .replace(/\s+/g, "_");
+      return call("remember", { kind: "preference", key, value });
+    }
+    const isPat = user.match(
+      /remember(?:\s+that)?\s+(?:my\s+)?(.+?)\s+is\s+(.+?)[?.!]*$/i,
+    );
+    if (isPat?.[1] && isPat[2]) {
+      return call("remember", {
+        kind: "preference",
+        key: isPat[1].trim().replace(/\s+/g, "_"),
+        value: isPat[2].trim(),
+      });
+    }
+    return call("remember", { kind: "task", key: "note", value: user.trim() });
+  }
+
+  if (
+    toolNames.has("recall") &&
+    (/\brecall\b/i.test(user) ||
+      /what\s+(do\s+i|did\s+we|package\s+manager)\b/i.test(user) ||
+      /package\s+manager\s+do\s+i\s+prefer/i.test(user))
+  ) {
+    const query = /package\s+manager/i.test(user) ? "package" : undefined;
+    return call("recall", query ? { query } : {});
+  }
+
+  return undefined;
+}
+
 function routeFileAndShell(
   user: string,
   toolNames: Set<string>,
@@ -266,6 +302,18 @@ function routeFileAndShell(
   return undefined;
 }
 
+/**
+ * Pull a math expression out of messy natural language.
+ *
+ * Examples:
+ *   "What is (12 + 8) * 3?"  →  "(12+8)*3"
+ *   "Calculate 100 / 4"      →  "100 / 4"
+ *
+ * Strategy (first match wins):
+ *   1) parenthetical expression, optionally with a trailing operator+number
+ *   2) text after "what is" / "calculate" / "compute"
+ *   3) first run of digits and arithmetic characters
+ */
 function extractExpression(user: string): string {
   const paren = user.match(/\(([^)]+)\)/);
   if (paren?.[0] && /[+\-*/]/.test(paren[0])) {
