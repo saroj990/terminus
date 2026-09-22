@@ -26,6 +26,9 @@ importers:
       '@lca/logger':
         specifier: workspace:*
         version: link:../../packages/logger
+      '@lca/memory':
+        specifier: workspace:*
+        version: link:../../packages/memory
       '@lca/policy':
         specifier: workspace:*
         version: link:../../packages/policy
@@ -51,6 +54,9 @@ importers:
       '@lca/llm':
         specifier: workspace:*
         version: link:../packages/llm
+      '@lca/memory':
+        specifier: workspace:*
+        version: link:../packages/memory
       '@lca/policy':
         specifier: workspace:*
         version: link:../packages/policy
@@ -111,6 +117,18 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
 
+  packages/memory:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.1
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.12
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
   packages/policy:
     dependencies:
       '@lca/agent-core':
@@ -148,6 +166,9 @@ importers:
       '@lca/agent-core':
         specifier: workspace:*
         version: link:../agent-core
+      '@lca/memory':
+        specifier: workspace:*
+        version: link:../memory
       '@lca/policy':
         specifier: workspace:*
         version: link:../policy

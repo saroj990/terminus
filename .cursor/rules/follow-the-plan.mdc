@@ -9,8 +9,8 @@ Implementation **must** follow `docs/AI_Agent_Engineering_Roadmap.md` **in phase
 
 ## Current position
 
-- **Done:** Phase 0–1 (loop, calculator, weather), Phase 2 (file + jailed shell).
-- **Next only:** **Phase 3 — RAG** (embeddings, chunking, index, `search_codebase`, Q→file evals).
+- **Done:** Phase 0–1 (loop, calculator, weather), Phase 2 (file + jailed shell), Phase 3 RAG, Phase 4 memory (`remember` / `recall`, `.lca/memory.json`).
+- **Next only:** **Phase 5 — frameworks / HITL** (structured agent graphs, approval UX — not coding-agent writes).
 
 ## Locked sequence
 

@@ -54,4 +54,29 @@ describe("heuristic llm", () => {
     });
     assert.equal(res.toolCalls?.[0]?.name, "search_codebase");
   });
+
+  it("routes remember and recall", async () => {
+    const tools = createDefaultTools();
+    const remember = await llm.complete({
+      messages: [
+        { role: "system", content: "x" },
+        { role: "user", content: "Remember that I prefer pnpm as the package manager" },
+      ],
+      tools,
+    });
+    assert.equal(remember.toolCalls?.[0]?.name, "remember");
+    assert.equal(
+      (remember.toolCalls?.[0]?.arguments as { value?: string })?.value,
+      "pnpm",
+    );
+
+    const recall = await llm.complete({
+      messages: [
+        { role: "system", content: "x" },
+        { role: "user", content: "What package manager do I prefer?" },
+      ],
+      tools,
+    });
+    assert.equal(recall.toolCalls?.[0]?.name, "recall");
+  });
 });

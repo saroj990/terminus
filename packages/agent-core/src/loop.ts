@@ -39,8 +39,7 @@
  * SHORT-TERM MEMORY
  * -----------------
  * The `messages` array is the conversation scratchpad for THIS run only.
- * Each observation is appended so the next THINK sees prior tool results.
- * (Long-term memory across runs is a later phase.)
+ * Long-term prefs/tasks come from `options.extraSystem` (Phase 4 memory file).
  */
 
 import type {
@@ -66,6 +65,8 @@ export interface AgentLoopOptions {
   maxSteps?: number;
   workspaceRoot?: string;
   signal?: AbortSignal;
+  /** Long-term memory / session facts appended to the system prompt */
+  extraSystem?: string;
 }
 
 /**
@@ -92,7 +93,8 @@ const SYSTEM_PROMPT = `You are a careful tool-using assistant.
 - Prefer tools over guessing for math and external facts.
 - Call at most the tools you need.
 - After observations, give a concise final answer.
-- Never invent tool results.`;
+- Never invent tool results.
+- Use remember/recall for long-term preferences and previous tasks. Never store secrets.`;
 
 /**
  * Run one AgentRun to completion (or until approval / cancel / failure).
@@ -131,8 +133,11 @@ export async function runAgentLoop(
    * Conversation buffer sent to the LLM every THINK.
    * Starts with system rules + the user's goal; grows with assistant/tool turns.
    */
+  const system = options.extraSystem
+    ? `${SYSTEM_PROMPT}\n\n${options.extraSystem}`
+    : SYSTEM_PROMPT;
   const messages: AgentMessage[] = [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: system },
     { role: "user", content: run.goal },
   ];
 

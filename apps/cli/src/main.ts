@@ -97,11 +97,14 @@ import { createDefaultPolicy } from "@lca/policy";
  * createDefaultTools:
  *   Phase 1: calculator, get_weather
  *   Phase 2: read_file, list_dir, search_files, run_shell (jailed / allowlisted)
+ *   Phase 3: index_codebase, search_codebase
+ *   Phase 4: remember, recall (plus extraSystem from .lca/memory.json)
  *
  *   Each tool is a ToolSpec: { name, description, sideEffect, inputSchema, execute }.
  *   The LLM sees name/description/schema; your runtime calls execute().
  */
 import { createDefaultTools } from "@lca/tools";
+import { formatMemoryPrompt, loadMemory } from "@lca/memory";
 
 /**
  * loadEnvFile:
@@ -241,9 +244,8 @@ async function main() {
       },
     },
     {
-      // Absolute path of the current working directory when you launched the CLI.
-      // Future file tools will refuse paths that escape this root (path jail).
       workspaceRoot,
+      extraSystem: formatMemoryPrompt(loadMemory(workspaceRoot)),
     },
   );
 
