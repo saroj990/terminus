@@ -16,11 +16,12 @@ apps/cli              # Phase 0/1 runner
 packages/agent-core   # AgentRun, ToolSpec, Think→Act→Observe loop
 packages/policy       # allow / deny / ask + path jail helpers
 packages/logger       # structured JSON logs with secret redaction
-packages/tools        # calculator, weather, files, shell, RAG, memory
+packages/tools        # calculator, weather, files, shell, RAG, memory, GitHub
+packages/github       # gh/git helpers, dry-run by default
 packages/rag          # chunk + hashed embeddings + cosine retrieval
 packages/memory       # typed prefs/tasks in .lca/memory.json (no secrets)
 packages/llm          # heuristic + OpenAI-compatible (Ollama/OpenAI)
-evals/                # Phase 1–5 golden cases
+evals/                # Phase 1–6 golden cases
 fixtures/repos        # tiny-node fixture
 ```
 
@@ -41,6 +42,8 @@ pnpm agent -- "Remember that I prefer pnpm as the package manager"
 pnpm agent -- "What package manager do I prefer?"
 pnpm agent -- "Confirm the action demo"
 pnpm agent -- --approve
+pnpm agent -- "Create a GitHub issue titled Bug in login"
+pnpm agent -- "Review recent commits"
 
 # Optional: Ollama
 # LCA_PROVIDER=ollama OLLAMA_MODEL=llama3.2 pnpm agent -- "Calculate 15 * 4"

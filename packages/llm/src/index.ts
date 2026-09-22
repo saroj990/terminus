@@ -184,6 +184,9 @@ export function createHeuristicLlm(): LlmClient {
       const hitlCall = routeHitl(user, toolNames);
       if (hitlCall) return hitlCall;
 
+      const githubCall = routeGithub(user, toolNames);
+      if (githubCall) return githubCall;
+
       const memoryCall = routeMemory(user, toolNames);
       if (memoryCall) return memoryCall;
 
@@ -198,11 +201,38 @@ export function createHeuristicLlm(): LlmClient {
        */
       return {
         content:
-          "I can help with arithmetic, weather, files, codebase search, allowlisted shell, memory, or confirm_action (needs approval).",
+          "I can help with arithmetic, weather, files, codebase search, shell, memory, GitHub (dry-run by default), or confirm_action (needs approval).",
         finishReason: "stop",
       };
     },
   };
+}
+
+function routeGithub(user: string, toolNames: Set<string>): LlmResponse | undefined {
+  const call = (name: string, args: Record<string, unknown>): LlmResponse => ({
+    content: "",
+    finishReason: "tool_calls",
+    toolCalls: [{ id: createToolCallId(), name, arguments: args }],
+  });
+
+  if (toolNames.has("github_review_commits") && /\b(review|summarize)\b.*\bcommit/i.test(user)) {
+    return call("github_review_commits", { limit: 5 });
+  }
+  if (toolNames.has("github_create_issue") && /\b(create|open)\b.*\bissue/i.test(user)) {
+    const title =
+      user.match(/issue(?:\s+title)?\s+['"]?([^'".\n]+)/i)?.[1]?.trim() ??
+      user.match(/titled\s+['"]?([^'".\n]+)/i)?.[1]?.trim() ??
+      "Untitled issue";
+    return call("github_create_issue", { title });
+  }
+  if (toolNames.has("github_open_pr") && /\b(open|create)\b.*\bpull request/i.test(user)) {
+    const title =
+      user.match(/pull request\s+['"]?([^'".\n]+)/i)?.[1]?.trim() ??
+      user.match(/titled\s+['"]?([^'".\n]+)/i)?.[1]?.trim() ??
+      "Untitled PR";
+    return call("github_open_pr", { title });
+  }
+  return undefined;
 }
 
 function routeHitl(user: string, toolNames: Set<string>): LlmResponse | undefined {
