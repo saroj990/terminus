@@ -132,6 +132,9 @@ importers:
       '@lca/agent-core':
         specifier: workspace:*
         version: link:../agent-core
+      '@lca/policy':
+        specifier: workspace:*
+        version: link:../policy
     devDependencies:
       '@types/node':
         specifier: ^22.10.2
