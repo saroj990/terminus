@@ -1,0 +1,22 @@
+---
+description: Git commit identity — saroj990, never Cursor Co-authored-by
+alwaysApply: true
+---
+
+# Git commits
+
+When creating git commits in this repo:
+
+- **Do not** add `Co-authored-by: Cursor` or `Co-authored-by: Cursor <cursoragent@cursor.com>` (or any Cursor co-author trailer).
+- **Do not** add `Made-with: Cursor` or similar Cursor attribution trailers.
+- Set author on the commit (do **not** run `git config`):
+
+```bash
+git commit --author="saroj990 <saroj990@users.noreply.github.com>" -m "$(cat <<'EOF'
+message
+
+EOF
+)"
+```
+
+- Commit message: why, 1–2 sentences, follow existing log style. No Cursor mentions.
