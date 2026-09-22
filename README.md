@@ -16,10 +16,11 @@ apps/cli              # Phase 0/1 runner
 packages/agent-core   # AgentRun, ToolSpec, Think→Act→Observe loop
 packages/policy       # allow / deny / ask + path jail helpers
 packages/logger       # structured JSON logs with secret redaction
-packages/tools        # calculator, weather, file tools, jailed shell
+packages/tools        # calculator, weather, files, shell, RAG search
+packages/rag          # chunk + hashed embeddings + cosine retrieval
 packages/llm          # heuristic + OpenAI-compatible (Ollama/OpenAI)
-evals/                # Phase 1–2 golden cases
-fixtures/repos        # tiny-node fixture for file/shell evals
+evals/                # Phase 1–3 golden cases
+fixtures/repos        # tiny-node fixture
 ```
 
 ## Quick start

@@ -26,5 +26,5 @@ This is a **tool-using agent runtime**, not throwaway lesson apps. Later phases 
 
 - Docs live in `docs/` and are **gitignored**. Do not commit them.
 - After changes to loop, tools, policy, or llm: `pnpm test` and `pnpm eval`.
-- Do not add NestJS/React/RAG/GitHub until Phase 2 file + shell tools exist.
+- Follow the roadmap **in order** (see `follow-the-plan` rule). Next is Phase 3 RAG, not coding-agent writes.
 - Do not store secrets in logs or memory; logger already redacts key/token/secret patterns.

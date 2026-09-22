@@ -1,0 +1,26 @@
+---
+description: Follow the engineering roadmap in order — no skipping phases
+alwaysApply: true
+---
+
+# Follow the plan
+
+Implementation **must** follow `docs/AI_Agent_Engineering_Roadmap.md` **in phase order**. Do not skip, pull later lessons forward, or “optimize” by jumping to coding/deploy.
+
+## Current position
+
+- **Done:** Phase 0–1 (loop, calculator, weather), Phase 2 (file + jailed shell).
+- **Next only:** **Phase 3 — RAG** (embeddings, chunking, index, `search_codebase`, Q→file evals).
+
+## Locked sequence
+
+0–1 fundamentals → 2 file/terminal → **3 RAG** → 4 memory → 5 frameworks/HITL → 6 GitHub → 7 coding agent → 8 deploy → 9 multi-agent → 10 production.
+
+## Do not
+
+- Add `write_file` / coding pipeline / lint-fix loop until Phase 7.
+- Add GitHub PR/issue tools until Phase 6.
+- Add LangGraph/dashboard/NestJS until their phases.
+- Propose “shortcuts” that skip RAG or memory.
+
+If the user asks to skip ahead, **remind them this rule** and implement the current phase unless they explicitly override the rule.

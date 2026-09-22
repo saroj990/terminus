@@ -133,4 +133,25 @@ export const PHASE2_CASES: EvalCase[] = [
   },
 ];
 
-export const ALL_CASES = [...PHASE1_CASES, ...PHASE2_CASES];
+export const PHASE3_CASES: EvalCase[] = [
+  {
+    id: "rag_where_greet",
+    kind: "task_success",
+    goal: "Where is greet defined?",
+    expectTools: ["search_codebase"],
+    expectAnswerIncludes: ["index.js"],
+    expectStatus: "succeeded",
+    workspaceRoot: TINY_NODE,
+  },
+  {
+    id: "rag_what_project",
+    kind: "tool_routing",
+    goal: "What does this project do?",
+    expectTools: ["search_codebase"],
+    expectAnswerIncludes: ["README.md"],
+    expectStatus: "succeeded",
+    workspaceRoot: TINY_NODE,
+  },
+];
+
+export const ALL_CASES = [...PHASE1_CASES, ...PHASE2_CASES, ...PHASE3_CASES];
