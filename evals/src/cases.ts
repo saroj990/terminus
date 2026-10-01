@@ -281,6 +281,44 @@ export const PHASE7_CASES: EvalCase[] = [
   },
 ];
 
+export const PHASE8_CASES: EvalCase[] = [
+  {
+    id: "deploy_docker_dry_run",
+    kind: "task_success",
+    goal: "Build the Docker image for staging",
+    expectTools: ["deploy_docker_build"],
+    expectAnswerIncludes: ["DRY RUN", "docker build"],
+    expectStatus: "succeeded",
+    useTempWorkspace: true,
+  },
+  {
+    id: "deploy_staging_dry_run",
+    kind: "task_success",
+    goal: "Deploy to staging",
+    expectTools: ["deploy_staging"],
+    expectAnswerIncludes: ["DRY RUN", "Deploy"],
+    expectStatus: "succeeded",
+    useTempWorkspace: true,
+  },
+  {
+    id: "deploy_check_health",
+    kind: "task_success",
+    goal: "Check staging health",
+    expectTools: ["deploy_check_health"],
+    expectAnswerIncludes: ["DRY RUN", "health"],
+    expectStatus: "succeeded",
+    useTempWorkspace: true,
+  },
+  {
+    id: "deploy_rollback_pause",
+    kind: "task_success",
+    goal: "Propose rollback because health check failed",
+    expectTools: ["deploy_propose_rollback"],
+    expectStatus: "awaiting_approval",
+    useTempWorkspace: true,
+  },
+];
+
 export const ALL_CASES = [
   ...PHASE1_CASES,
   ...PHASE2_CASES,
@@ -289,4 +327,5 @@ export const ALL_CASES = [
   ...PHASE5_CASES,
   ...PHASE6_CASES,
   ...PHASE7_CASES,
+  ...PHASE8_CASES,
 ];
