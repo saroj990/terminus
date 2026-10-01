@@ -1,6 +1,7 @@
 import { createCalculatorTool } from "./calculator.js";
 import { createWeatherTool } from "./weather.js";
-import { createListDirTool, createReadFileTool, createSearchFilesTool } from "./files.js";
+import { createListDirTool, createReadFileTool, createSearchFilesTool, createWriteFileTool } from "./files.js";
+import { createRunWorkspaceLintTool, createRunWorkspaceTestsTool } from "./coding.js";
 import { createRunShellTool } from "./shell.js";
 import { createIndexCodebaseTool, createSearchCodebaseTool } from "./rag.js";
 import { createRecallTool, createRememberTool } from "./memory.js";
@@ -16,6 +17,7 @@ import type { ToolSpec } from "@lca/agent-core";
 export * from "./calculator.js";
 export * from "./weather.js";
 export * from "./files.js";
+export * from "./coding.js";
 export * from "./shell.js";
 export * from "./rag.js";
 export * from "./memory.js";
@@ -31,6 +33,7 @@ export function createPhase1Tools(options?: {
 export function createPhase2Tools(): ToolSpec[] {
   return [
     createReadFileTool(),
+    createWriteFileTool(),
     createListDirTool(),
     createSearchFilesTool(),
     createRunShellTool(),
@@ -58,6 +61,10 @@ export function createPhase6Tools(options?: { githubExec?: ExecFn }): ToolSpec[]
   ];
 }
 
+export function createPhase7Tools(): ToolSpec[] {
+  return [createRunWorkspaceTestsTool(), createRunWorkspaceLintTool()];
+}
+
 export function createDefaultTools(options?: {
   fetchImpl?: typeof fetch;
   githubExec?: ExecFn;
@@ -69,5 +76,6 @@ export function createDefaultTools(options?: {
     ...createPhase4Tools(),
     ...createPhase5Tools(),
     ...createPhase6Tools({ githubExec: options?.githubExec }),
+    ...createPhase7Tools(),
   ];
 }

@@ -184,6 +184,9 @@ export function createHeuristicLlm(): LlmClient {
       const hitlCall = routeHitl(user, toolNames);
       if (hitlCall) return hitlCall;
 
+      const codingCall = routeCoding(user, toolNames);
+      if (codingCall) return codingCall;
+
       const githubCall = routeGithub(user, toolNames);
       if (githubCall) return githubCall;
 
@@ -206,6 +209,38 @@ export function createHeuristicLlm(): LlmClient {
       };
     },
   };
+}
+
+function routeCoding(user: string, toolNames: Set<string>): LlmResponse | undefined {
+  const call = (name: string, args: Record<string, unknown>): LlmResponse => ({
+    content: "",
+    finishReason: "tool_calls",
+    toolCalls: [{ id: createToolCallId(), name, arguments: args }],
+  });
+
+  if (toolNames.has("run_workspace_tests") && /\brun\b.*\btests?\b/i.test(user)) {
+    return call("run_workspace_tests", {});
+  }
+  if (toolNames.has("run_workspace_lint") && /\brun\b.*\b(lint|typecheck)\b/i.test(user)) {
+    return call("run_workspace_lint", {});
+  }
+
+  if (toolNames.has("write_file") && /\b(write|create|update)\b.*\bfile\b/i.test(user)) {
+    const rich = user.match(
+      /write(?:\s+the)?\s+file\s+(\S+)\s+with\s+content\s+(.+?)[?.!]*$/i,
+    );
+    if (rich?.[1] && rich[2]) {
+      return call("write_file", {
+        path: rich[1].replace(/^["']|["']$/g, ""),
+        content: rich[2].trim(),
+      });
+    }
+    const pathOnly = user.match(/file\s+(\S+)/i)?.[1]?.replace(/^["']|["']$/g, "");
+    if (pathOnly) {
+      return call("write_file", { path: pathOnly, content: "" });
+    }
+  }
+  return undefined;
 }
 
 function routeGithub(user: string, toolNames: Set<string>): LlmResponse | undefined {
